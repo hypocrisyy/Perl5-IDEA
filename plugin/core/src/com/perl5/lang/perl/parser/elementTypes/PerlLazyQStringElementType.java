@@ -24,10 +24,12 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiUtilCore;
-import com.perl5.lang.perl.lexer.PerlElementTypesGenerated;
 import com.perl5.lang.perl.lexer.PerlLexer;
 import com.perl5.lang.perl.lexer.adapters.PerlSubLexerAdapter;
 import org.jetbrains.annotations.NotNull;
+
+import static com.perl5.lang.perl.lexer.PerlElementTypesGenerated.REGEX_REPLACEMENT;
+import static com.perl5.lang.perl.lexer.adapters.PerlSublexingLexerAdapter.SINGLE_QUOTES_AFFECTING_PARSING;
 
 
 public class PerlLazyQStringElementType extends PerlLazyBlockElementType {
@@ -45,23 +47,29 @@ public class PerlLazyQStringElementType extends PerlLazyBlockElementType {
   protected @NotNull Lexer getLexer(@NotNull Project project, @NotNull ASTNode chameleon) {
     PerlSubLexerAdapter subLexerAdapter = PerlSubLexerAdapter.forStringSQ(project);
     ASTNode prevNode = chameleon.getTreePrev();
-    if (PsiUtilCore.getElementType(prevNode) == PerlElementTypesGenerated.QUOTE_SINGLE_OPEN) {
-      CharSequence nodeChars = prevNode.getChars();
-      if (nodeChars.length() != 1) {
-        LOG.error("Got " + nodeChars);
+    if (prevNode == null) {
+      ASTNode parent = chameleon.getTreeParent();
+      if (PsiUtilCore.getElementType(parent) == REGEX_REPLACEMENT) {
+        prevNode = parent.getTreePrev();
       }
-      char openQuoteChar = nodeChars.charAt(0);
-
-      FlexLexer perlLexer = subLexerAdapter.getFlex();
-      LOG.assertTrue(perlLexer instanceof PerlLexer, "Got " + perlLexer);
-      return new DelegateLexer(subLexerAdapter) {
-        @Override
-        public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
-          super.start(buffer, startOffset, endOffset, initialState);
-          ((PerlLexer)perlLexer).setSingleOpenQuoteChar(openQuoteChar);
-        }
-      };
     }
-    return subLexerAdapter;
+    if (!SINGLE_QUOTES_AFFECTING_PARSING.contains(PsiUtilCore.getElementType(prevNode))) {
+      return subLexerAdapter;
+    }
+    CharSequence nodeChars = prevNode.getChars();
+    if (nodeChars.length() != 1) {
+      LOG.error("Got " + nodeChars);
+    }
+    char openQuoteChar = nodeChars.charAt(0);
+
+    FlexLexer perlLexer = subLexerAdapter.getFlex();
+    LOG.assertTrue(perlLexer instanceof PerlLexer, "Got " + perlLexer);
+    return new DelegateLexer(subLexerAdapter) {
+      @Override
+      public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
+        super.start(buffer, startOffset, endOffset, initialState);
+        ((PerlLexer)perlLexer).setSingleOpenQuoteChar(openQuoteChar);
+      }
+    };
   }
 }

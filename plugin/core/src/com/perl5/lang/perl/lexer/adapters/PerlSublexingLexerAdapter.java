@@ -27,6 +27,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
+import com.intellij.psi.tree.TokenSet;
 import com.perl5.lang.perl.lexer.PerlElementTypes;
 import com.perl5.lang.perl.lexer.PerlLexer;
 import gnu.trove.THashMap;
@@ -36,6 +37,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 
 public class PerlSublexingLexerAdapter extends LexerBase implements PerlElementTypes {
+  public static final TokenSet SINGLE_QUOTES_AFFECTING_PARSING = TokenSet.create(QUOTE_SINGLE_OPEN, REGEX_QUOTE_OPEN, REGEX_QUOTE);
   private static final Logger LOG = Logger.getInstance(FlexAdapter.class);
   private static final int LAZY_BLOCK_MINIMAL_SIZE = 140;
   private static final Map<IElementType, Integer> SUBLEXINGS_MAP = new THashMap<>();
@@ -203,14 +205,14 @@ public class PerlSublexingLexerAdapter extends LexerBase implements PerlElementT
     if (myTokenType == LEFT_BRACE_CODE_START) {
       myTokenType = LEFT_BRACE;
     }
-    else if (myTokenType == QUOTE_SINGLE_OPEN) {
+    else if (SINGLE_QUOTES_AFFECTING_PARSING.contains(myTokenType)) {
       CharSequence tokenSequence = lexer.getTokenSequence();
       if (tokenSequence.length() != 1) {
         LOG.error("Got: " + tokenSequence);
       }
       mySingleOpenQuoteChar = tokenSequence.charAt(0);
     }
-    else if (myTokenType == QUOTE_SINGLE_CLOSE) {
+    else if (myTokenType == QUOTE_SINGLE_CLOSE || myTokenType == REGEX_QUOTE_CLOSE || myTokenType == REGEX_QUOTE_E) {
       mySingleOpenQuoteChar = 0;
     }
     myTokenStart = lexer.getTokenStart();

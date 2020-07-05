@@ -942,7 +942,8 @@ public abstract class PerlBaseLexer extends PerlProtoLexer implements PerlElemen
           int secondBlockEndOffset = getRegexBlockEndOffset(currentOffset, secondBlockOpeningQuote, true);
 
           if (secondBlockEndOffset > currentOffset) {
-            secondBlockToken = new CustomToken(currentOffset, secondBlockEndOffset, LP_STRING_QQ);
+            secondBlockToken = new CustomToken(
+              currentOffset, secondBlockEndOffset, secondBlockOpeningQuote == '\'' ? LP_STRING_Q : LP_STRING_QQ);
             pushPreparsedToken(secondBlockToken);
             currentOffset = secondBlockEndOffset;
           }
